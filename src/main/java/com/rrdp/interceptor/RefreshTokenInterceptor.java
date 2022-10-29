@@ -16,8 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.SystemConstants.LOGIN_TOKEN_PRE;
-import static com.rrdp.utils.SystemConstants.LOGIN_TOKEN_TTL;
+import static com.rrdp.utils.RedisConstants.*;
 
 /**
  * ClassName RefreshTokenInterceptor

@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.SystemConstants.*;
+import static com.rrdp.utils.RedisConstants.*;
 
 /**
  * <p>

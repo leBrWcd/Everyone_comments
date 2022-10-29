@@ -2,22 +2,28 @@ package com.rrdp.controller;
 
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.rrdp.dto.Result;
 import com.rrdp.entity.Shop;
 import com.rrdp.service.IShopService;
 import com.rrdp.utils.SystemConstants;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+
+import java.util.concurrent.TimeUnit;
+
+import static com.rrdp.utils.RedisConstants.*;
 
 /**
  * <p>
  * 前端控制器
  * </p>
  *
- * @author 虎哥
- * @since 2021-12-22
+ * @author lebrwcd
+ * @since 2022/10/29
  */
 @RestController
 @RequestMapping("/shop")
@@ -33,7 +39,8 @@ public class ShopController {
      */
     @GetMapping("/{id}")
     public Result queryShopById(@PathVariable("id") Long id) {
-        return Result.ok(shopService.getById(id));
+
+        return shopService.queryShopCache(id);
     }
 
     /**
@@ -52,13 +59,11 @@ public class ShopController {
     /**
      * 更新商铺信息
      * @param shop 商铺数据
-     * @return 无
+     * @return Result
      */
     @PutMapping
     public Result updateShop(@RequestBody Shop shop) {
-        // 写入数据库
-        shopService.updateById(shop);
-        return Result.ok();
+        return shopService.update(shop);
     }
 
     /**
@@ -68,10 +73,8 @@ public class ShopController {
      * @return 商铺列表
      */
     @GetMapping("/of/type")
-    public Result queryShopByType(
-            @RequestParam("typeId") Integer typeId,
-            @RequestParam(value = "current", defaultValue = "1") Integer current
-    ) {
+    public Result queryShopByType(@RequestParam("typeId") Integer typeId,
+                                  @RequestParam(value = "current", defaultValue = "1") Integer current ) {
         // 根据类型分页查询
         Page<Shop> page = shopService.query()
                 .eq("type_id", typeId)
@@ -87,10 +90,8 @@ public class ShopController {
      * @return 商铺列表
      */
     @GetMapping("/of/name")
-    public Result queryShopByName(
-            @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "current", defaultValue = "1") Integer current
-    ) {
+    public Result queryShopByName(@RequestParam(value = "name", required = false) String name,
+                                  @RequestParam(value = "current", defaultValue = "1") Integer current ) {
         // 根据类型分页查询
         Page<Shop> page = shopService.query()
                 .like(StrUtil.isNotBlank(name), "name", name)

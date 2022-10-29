@@ -1,7 +1,7 @@
 package com.rrdp.utils;
 
 /**
- * @description: 常量工具类
+ * @description: 系统常量工具类
  * @author : lebrwcd
  * @date : 2022/10/28
  *
@@ -23,20 +23,4 @@ public class SystemConstants {
      * 最大页码
      */
     public static final int MAX_PAGE_SIZE = 10;
-    /**
-     * 存入redis的验证码 key
-     */
-    public static final String LOGIN_CODE_PRE = "login:code:";
-    /**
-     * 存入redis key 的有效时间（分钟）
-     */
-    public static final Long LOGIN_CODE_TTL = 2L;
-    /**
-     * 存入redis user的token前缀
-     */
-    public static final String LOGIN_TOKEN_PRE = "login:token:";
-    /**
-     * 存入redis user的token 有效时间（分钟）
-     */
-    public static final Long LOGIN_TOKEN_TTL = 30L;
 }
