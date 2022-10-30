@@ -24,6 +24,9 @@ public class RedisConstants {
      */
     public static final Long LOGIN_TOKEN_TTL = 30L;
 
+    /**
+     * 缓存空值有效时间
+     */
     public static final Long CACHE_NULL_TTL = 2L;
 
     /**

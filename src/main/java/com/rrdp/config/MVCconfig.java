@@ -31,6 +31,7 @@ public class MVCconfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 拦截一切请求
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate))
+                .excludePathPatterns("/user/code","/user/login")
                 .addPathPatterns("/**")
                 .order(0);
         // 拦截部分请求

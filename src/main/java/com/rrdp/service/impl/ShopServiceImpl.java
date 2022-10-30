@@ -1,5 +1,6 @@
 package com.rrdp.service.impl;
 
+import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.rrdp.dto.Result;
@@ -12,10 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.sql.Time;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.RedisConstants.CACHE_SHOP_KEY;
-import static com.rrdp.utils.RedisConstants.CACHE_SHOP_TTL;
+import static com.rrdp.utils.RedisConstants.*;
 
 /**
  * <p>
@@ -48,23 +49,117 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     public Result queryShopCache(Long id) {
+        // 缓存穿透
+        // Shop shop = queryWithPassThrough(id);
+
+        // 缓存击穿
+        Shop shop = queryWithMutex(id);
+        if (shop == null) {
+            return Result.fail("商铺不存在");
+        }
+        return Result.ok(shop);
+    }
+
+    /** 商铺查询 - 解决缓存击穿  互斥锁方法
+     * @param id 商铺主键
+     * @return 商铺信息
+     */
+    public Shop queryWithMutex(Long id) {
+        String key = CACHE_SHOP_KEY + id;
+        // 1.从redis中查询商铺缓存
+        String shopCache = stringRedisTemplate.opsForValue().get(key);
+        // 2.判断缓存是否命中
+        if (StrUtil.isNotBlank(shopCache)) {
+            // 2.1 命中，返回数据
+            return JSONUtil.toBean(shopCache,Shop.class);
+        }
+        // 判断命中的是否是空值 : ""
+        if (shopCache != null) {
+            // 不为null就是 ""
+            return null;
+        }
+        // 3.未命中，尝试获取互斥锁
+        String lockKey = LOCK_SHOP_KEY + id;
+        Shop shop = null;
+        try {
+            if (!tryLock(lockKey)) {
+                // 3.1 获取锁失败，休眠
+                Thread.sleep(50);
+                // 3.2 重试
+                return queryWithMutex(id);
+            }
+            // 3.3 获取锁,根据id从数据库查询
+            shop = getById(id);
+            if (shop == null) {
+                // 数据库也不存在，防止缓存穿透，将空值写入redis
+                stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+                return null;
+            }
+            // 3.4 写入缓存
+            stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // 4.释放互斥锁
+            unlock(key);
+        }
+        // 5.返回
+        return shop;
+    } // end of queryWithMutex
+
+    /**
+     * 商铺查询 - 解决缓存穿透
+     * @param id 商铺主键
+     * @return 商铺信息
+     */
+    public Shop queryWithPassThrough(Long id) {
         String key = CACHE_SHOP_KEY + id;
         // 1.从redis中查询商铺缓存
         String shopCache = stringRedisTemplate.opsForValue().get(key);
         // 2. 缓存是否命中
-        if (StrUtil.isNotEmpty(shopCache)) {
+        /**
+         * StrUtil.isNotBlank(null)  false
+         * StrUtil.isNotBlank("") false  空串返回false
+         * StrUtil.isNotBlank("\t\n") false
+         * StrUtil.isNotBlank("abc") true  有值
+         */
+        if (StrUtil.isNotBlank(shopCache)) {
             // 2.1 命中，直接返回
-            Shop shop = JSONUtil.toBean(shopCache, Shop.class);
-            return Result.ok(shop);
+            return JSONUtil.toBean(shopCache, Shop.class);
+        }
+        // 判断命中的是否是空值
+        if (shopCache != null) {
+            // 不为null就是 ""
+            return null;
         }
         // 2.2 未命中，根据id从数据库查询
-        Shop shop = query().eq("id",id).one();
+        Shop shop = query().eq("id", id).one();
         // 3. 判断商铺是否存在
         if (shop == null) {
-            return Result.fail("商铺不存在");
+            // 将空值写入有效期，解决缓存穿透
+            stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
+            return null;
         }
         // 4. 写入redis
-        stringRedisTemplate.opsForValue().set(key,JSONUtil.toJsonStr(shop),CACHE_SHOP_TTL, TimeUnit.MINUTES);
-        return Result.ok(shop);
+        stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL, TimeUnit.MINUTES);
+        return  shop;
+    } // end of queryWithPassThrough
+
+    /**
+     * 尝试获得锁
+     * @param key key
+     * @return true：获得 false ：没有获得
+     */
+    private  boolean tryLock(String key) {
+        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "lock", LOCK_SHOP_TTL, TimeUnit.SECONDS);
+        return BooleanUtil.isTrue(flag);
+    }
+
+    /**
+     * 释放锁
+     * @param key key
+     */
+    private void unlock(String key) {
+        stringRedisTemplate.delete(key);
     }
 }
