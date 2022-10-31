@@ -13,7 +13,6 @@ import com.rrdp.mapper.UserMapper;
 import com.rrdp.service.IUserService;
 import com.rrdp.utils.RegexUtils;
 import com.rrdp.utils.SystemConstants;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.RedisConstants.*;
+import static com.rrdp.utils.redis.RedisConstants.*;
 
 /**
  * <p>

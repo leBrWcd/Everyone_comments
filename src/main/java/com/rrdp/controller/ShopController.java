@@ -2,20 +2,14 @@ package com.rrdp.controller;
 
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.rrdp.dto.Result;
 import com.rrdp.entity.Shop;
 import com.rrdp.service.IShopService;
 import com.rrdp.utils.SystemConstants;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-
-import java.util.concurrent.TimeUnit;
-
-import static com.rrdp.utils.RedisConstants.*;
 
 /**
  * <p>

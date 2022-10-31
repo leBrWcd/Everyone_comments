@@ -1,28 +1,21 @@
 package com.rrdp.service.impl;
 
-import cn.hutool.core.util.BooleanUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import com.rrdp.dto.Result;
 import com.rrdp.entity.Shop;
 import com.rrdp.mapper.ShopMapper;
 import com.rrdp.service.IShopService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.rrdp.utils.CacheClient;
-import com.rrdp.utils.RedisData;
+import com.rrdp.utils.redis.CacheClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
-import java.sql.Time;
-import java.time.LocalDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.RedisConstants.*;
+import static com.rrdp.utils.redis.RedisConstants.*;
 
 /**
  * <p>
@@ -42,6 +35,11 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     // 线程池 - 用于缓存重建开启独立线程
     private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
 
+    /**
+     * 先更新数据库，再删除缓存，采用事务控制
+     * @param shop 商铺
+     * @return 无
+     */
     @Override
     @Transactional
     public Result update(Shop shop) {

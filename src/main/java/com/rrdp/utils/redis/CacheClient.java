@@ -1,4 +1,4 @@
-package com.rrdp.utils;/**
+package com.rrdp.utils.redis;/**
  * @author lebrwcd
  * @date 2022/10/31
  * @note
@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import static com.rrdp.utils.RedisConstants.*;
+import static com.rrdp.utils.redis.RedisConstants.*;
 
 /**
  * ClassName CacheClient

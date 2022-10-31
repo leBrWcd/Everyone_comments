@@ -16,7 +16,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static com.rrdp.utils.RedisConstants.*;
+import static com.rrdp.utils.redis.RedisConstants.*;
 
 /**
  * ClassName RefreshTokenInterceptor

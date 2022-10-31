@@ -1,4 +1,4 @@
-package com.rrdp.utils;
+package com.rrdp.utils.redis;
 
 /**
  * @description: Redis常量类

@@ -1,4 +1,4 @@
-package com.rrdp.utils;
+package com.rrdp.utils.redis;
 
 import lombok.Data;
 
