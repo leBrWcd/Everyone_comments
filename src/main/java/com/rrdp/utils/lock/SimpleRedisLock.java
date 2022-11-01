@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * ClassName SimpleRedisLock
- * Description TODO
+ * Description Redis实现分布式锁
  *
  * @author lebr7wcd
  * @version 1.0
@@ -34,7 +34,7 @@ public class SimpleRedisLock implements ILock{
     public boolean tryLock(long timeoutSec) {
         // 当前线程标识
         long threadId = Thread.currentThread().getId();
-        // 获取锁
+        // 获取锁  互斥  同时设置超时时间
         Boolean success = stringRedisTemplate.opsForValue()
                 .setIfAbsent(KEY_PREFIX + name, threadId + "", timeoutSec, TimeUnit.SECONDS);
         // 防止npe

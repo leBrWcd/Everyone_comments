@@ -8,9 +8,11 @@ import com.rrdp.service.ISeckillVoucherService;
 import com.rrdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.rrdp.utils.UserHolder;
+import com.rrdp.utils.lock.SimpleRedisLock;
 import com.rrdp.utils.redis.RedisConstants;
 import com.rrdp.utils.redis.RedisIdWorker;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     private RedisIdWorker redisIdWorker;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 优惠券秒杀
@@ -61,13 +66,26 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         // 3.2 充足
         Long userId = UserHolder.getUser().getId();
-        // 一个用户一把锁 intern() 返回字符串对象的规范表示
-        // 悲观锁
-        synchronized (userId.toString().intern()) {
+        // 创建锁对象
+        SimpleRedisLock simpleRedisLock = new SimpleRedisLock(stringRedisTemplate, "order" + userId);
+        // 获取锁
+        boolean isLock = simpleRedisLock.tryLock(1200L);
+        // 是否获取锁成功
+        if (!isLock) {
+            // 失败,返回错误信息
+            return Result.fail("不允许重复下单");
+        }
+        try {
             // 获取事务的当前代理对象 需要引进 Aspectj 依赖
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
             return proxy.createVoucherOrder(voucherId);
+        } catch (IllegalStateException e) {
+            throw new RuntimeException(e);
+        } finally {
+            // 释放锁
+            simpleRedisLock.unlock();
         }
+
     }
 
     /**
