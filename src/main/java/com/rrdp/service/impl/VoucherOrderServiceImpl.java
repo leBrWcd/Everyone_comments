@@ -79,8 +79,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             // 获取事务的当前代理对象 需要引进 Aspectj 依赖
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
             return proxy.createVoucherOrder(voucherId);
-        } catch (IllegalStateException e) {
-            throw new RuntimeException(e);
         } finally {
             // 释放锁
             simpleRedisLock.unlock();
