@@ -11,6 +11,8 @@ import com.rrdp.utils.UserHolder;
 import com.rrdp.utils.lock.SimpleRedisLock;
 import com.rrdp.utils.redis.RedisConstants;
 import com.rrdp.utils.redis.RedisIdWorker;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -33,6 +36,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     private ISeckillVoucherService seckillVoucherService;
+
+    @Resource
+    private RedissonClient redissonClient;
 
     @Resource
     private RedisIdWorker redisIdWorker;
@@ -68,9 +74,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         // 3.2 充足
         Long userId = UserHolder.getUser().getId();
         // 创建锁对象
-        SimpleRedisLock simpleRedisLock = new SimpleRedisLock(stringRedisTemplate, "order" + userId);
+        // SimpleRedisLock simpleRedisLock = new SimpleRedisLock(stringRedisTemplate, "order" + userId);
+        RLock redissonClientLock = redissonClient.getLock("lock:order:" + userId);
         // 获取锁
-        boolean isLock = simpleRedisLock.tryLock(1200L);
+        boolean isLock = redissonClientLock.tryLock();
         // 是否获取锁成功
         if (!isLock) {
             // 失败,返回错误信息
@@ -82,7 +89,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return proxy.createVoucherOrder(voucherId);
         } finally {
             // 释放锁
-            simpleRedisLock.unlock();
+            redissonClientLock.unlock();
         }
 
     }
