@@ -487,3 +487,60 @@ Redis分布式锁总结：
 2、Redis分布式锁误删问题（当前线程标识与Redis分布式锁中value比较）
 3、lua脚本解决分布式锁误删问题解决方案中出现的原子性问题
 ```
+尽管Redis分布式可以通过lua脚本实现比锁删锁原子性问题，但是如果我们可以在锁到期后给他延时，是不是就不会出现后面的问题了
+这时就出现了Redisson了
+
+### 5.分布式锁-Redisson
+基于setnx实现的分布式锁存在下面的问题：
+![image](https://user-images.githubusercontent.com/83166781/199487566-cd8bf2e0-b611-448b-93f6-95ea28bd19a9.png)
+
+使用Redisson可以解决以上四个问题
+使用Redisson的步骤：
+```xml
+<dependency>
+	<groupId>org.redisson</groupId>
+	<artifactId>redisson</artifactId>
+	<version>3.13.6</version>
+</dependency>
+```
+```java
+@Configuration
+public class RedissonConfig {
+
+    @Bean
+    public RedissonClient redissonClient(){
+        // 配置
+        Config config = new Config();
+        config.useSingleServer().setAddress("redis://192.168.xxx.xxx:6379")
+            .setPassword("xxxx");
+        // 创建RedissonClient对象
+        return Redisson.create(config);
+    }
+}
+
+// 秒杀业务代码修改片段
+ //创建锁对象 这个代码不用了，因为我们现在要使用Redisson实现分布式锁
+ //SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+  RLock lock = redissonClient.getLock("lock:order:" + userId);
+  //获取锁对象
+  boolean isLock = lock.tryLock();
+```
+1. 使用Redisson可以实现可重入式的重要原因是底层采用了Hash结构，记录了线程标识和重入的次数
+![image](https://user-images.githubusercontent.com/83166781/199488483-b239949c-ca14-4808-9492-b6f246727140.png)
+![image](https://user-images.githubusercontent.com/83166781/199488523-98190268-7c7f-45d6-af39-d715991ed5c1.png)
+
+2. 使用Redisson实现可重试锁的原理是底层采用了信号量和发布订阅模型
+![image](https://user-images.githubusercontent.com/83166781/199488750-4320c771-b3d5-4a7f-8184-7049b28b3e60.png)
+
+3. 使用Redisson实现可超时续约的原理是底层采用了看门狗机制，触发了时会刷新expire
+![image](https://user-images.githubusercontent.com/83166781/199489044-963138dd-d573-47db-b1d6-4e074ff77d28.png)
+
+4. 使用Redisson实现主从一致性主要采用了Redisson的联锁机制，将多个Redis节点联锁，只有在该集合中的锁都重入成功，才算获取锁成功
+![image](https://user-images.githubusercontent.com/83166781/199489529-6e829ebe-3a68-42dd-9f3e-a9af5027b6db.png)
+
+![image](https://user-images.githubusercontent.com/83166781/199489818-52fda3cf-69dd-43f0-b0eb-4cb4f434c230.png)
+
+
+
+
+
