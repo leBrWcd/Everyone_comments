@@ -12,6 +12,7 @@ import com.rrdp.utils.lock.SimpleRedisLock;
 import com.rrdp.utils.redis.RedisConstants;
 import com.rrdp.utils.redis.RedisIdWorker;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
