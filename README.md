@@ -558,6 +558,17 @@ public class RedissonConfig {
 ![image](https://user-images.githubusercontent.com/83166781/199977771-93015391-4d3d-4347-8e05-25617145b04b.png)
 
 关键代码：
+```lua
+-- 这里的 KEYS[1] 就是锁的key，这里的ARGV[1] 就是当前线程标示
+-- 获取锁中的标示，判断是否与当前线程标示一致
+if (redis.call('GET', KEYS[1]) == ARGV[1]) then
+  -- 一致，则删除锁
+  return redis.call('DEL', KEYS[1])
+end
+-- 不一致，则直接返回
+return 0
+```
+
 ```java
 /**
  * 阻塞队列： 当一个线程尝试从队列中获取元素时，如果队列中没有元素，线程就会被阻塞，直到队列中有元素
@@ -638,7 +649,7 @@ private void handleVoucherOrder(VoucherOrder voucherOrder) {
     }
 }
 
-/**
+/**controller调用的方法
  * 优惠券秒杀业务
  * 我们去下单时，是通过lua表达式去原子执行判断逻辑，如果判断我出来不为0 ，则要么是库存不足，要么是重复下单，返回错误信息
  * 如果是0，则把下单的逻辑保存到队列中去，然后异步执行
