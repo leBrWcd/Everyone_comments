@@ -540,7 +540,163 @@ public class RedissonConfig {
 
 ![image](https://user-images.githubusercontent.com/83166781/199489818-52fda3cf-69dd-43f0-b0eb-4cb4f434c230.png)
 
+### 6.秒杀优化
+我们来回顾一下下单流程
+当用户发起请求，此时会请求nginx，nginx会访问到tomcat，而tomcat中的程序，会进行串行操作，分成如下几个步骤
+![image](https://user-images.githubusercontent.com/83166781/199976904-d097bbc5-6d7e-4d6b-be18-6dea30496ce2.png)
 
+在这六步操作中，有很多操作是要去操作数据库的，而且还是一个线程串行执行， 这样就会导致我们的程序执行的很慢，所以我们需要异步程序执行，那么如何加速呢？
+优化方案：
+```xml
+我们将耗时比较短的逻辑判断放入到redis中，比如是否库存足够，比如是否一人一单，这样的操作，只要这种逻辑可以完成，就意味着我们是一定可以下单完成的，我们只需要进行快速的逻辑判断，而其他需要操作数据库的可以放到异步线程去执行，再加以事务控制，就能完成优化
+考虑到redis中判断库存(stock>0)和一人一单(Set不可重复)需要两者都成立才可以进行下单，所以需要采用lua脚本做到原子性
+```
+![image](https://user-images.githubusercontent.com/83166781/199977140-b11ceaa1-f4e2-4df1-97a8-f09bfdb19094.png)
+![image](https://user-images.githubusercontent.com/83166781/199977196-b2ea4dbf-610b-4ef0-b2eb-79a5cfde0ef0.png)
 
+优化总体思路：
+![image](https://user-images.githubusercontent.com/83166781/199977771-93015391-4d3d-4347-8e05-25617145b04b.png)
 
+关键代码：
+```java
+/**
+ * 阻塞队列： 当一个线程尝试从队列中获取元素时，如果队列中没有元素，线程就会被阻塞，直到队列中有元素
+ *
+ *   而我们订单队列就是 有人去下单队列中才会去完成对应的操作
+ */
+private BlockingQueue<VoucherOrder> orderBlockingQueue = new ArrayBlockingQueue<>(1024 * 1024);
+/**
+ * 异步线程完成订单在数据库中的操作
+ */
+private static final ExecutorService SECKILL_ORDER_HANDLER = Executors.newSingleThreadExecutor();
+/**
+ * 事务代理对象
+ */
+private IVoucherOrderService proxy;
 
+/**
+ * 执行lua脚本的初始化工作
+ */
+private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
+static {
+    SECKILL_SCRIPT = new DefaultRedisScript<>();
+    SECKILL_SCRIPT.setLocation(new ClassPathResource("seckill.lua"));
+    SECKILL_SCRIPT.setResultType(Long.class);
+}
+/**
+ * PostConstruct Spring注解：类完成初始化后执行的方法
+ */
+@PostConstruct
+public void init() {
+    SECKILL_ORDER_HANDLER.submit(new VoucherOrderHandler());
+}
+/**
+ * 线程任务
+ * 内部类，从阻塞队列中取出订单信息，完成订单的创建
+ */
+private class VoucherOrderHandler implements Runnable{
+    @Override
+    public void run() {
+        while (true) {
+            try {
+                // 1.从队列中获取订单信息
+                VoucherOrder voucherOrder = orderBlockingQueue.take();
+                // 2.创建订单
+                handleVoucherOrder(voucherOrder);
+            } catch (Exception e) {
+                log.error("异步线程异常：",e);
+            }
+        }
+    }
+}
+/**
+ * 创建订单（异步线程去调用）
+ * @param voucherOrder  阻塞队列中获取的订单
+ * @return
+ */
+private void handleVoucherOrder(VoucherOrder voucherOrder) {
+    // 不能从ThreadLocal中取得，因为线程是子线程，而不是原来的线程
+    // Long userId = UserHolder.getUser().getId();
+    Long userId = voucherOrder.getUserId();
+    // 创建锁对象
+    RLock redissonClientLock = redissonClient.getLock("lock:order:" + userId);
+    // 获取锁
+    boolean isLock = redissonClientLock.tryLock();
+    // 是否获取锁成功
+    if (!isLock) {
+        // 失败,返回错误信息
+        log.error("不允许重复下单");
+    }
+    try {
+        // 同样 private static final ThreadLocal<Object> currentProxy 也是不能从ThreadLocal中取
+        // 获取事务的当前代理对象
+        // IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+        proxy.createVoucherOrder(voucherOrder);
+    } finally {
+        // 释放锁
+        redissonClientLock.unlock();
+    }
+}
+
+/**
+ * 优惠券秒杀业务
+ * 我们去下单时，是通过lua表达式去原子执行判断逻辑，如果判断我出来不为0 ，则要么是库存不足，要么是重复下单，返回错误信息
+ * 如果是0，则把下单的逻辑保存到队列中去，然后异步执行
+ * @param voucherId 优惠券ID
+ * @return 无
+ */
+@Override
+public Result seckillVoucher(Long voucherId) {
+
+    Long userId = UserHolder.getUser().getId();
+    long orderId = redisIdWorker.nextId("order");
+    // 1. 执行lua脚本
+    Long result = stringRedisTemplate.execute(
+            SECKILL_SCRIPT,
+            // key类型参数为0
+            Collections.emptyList(),
+            voucherId.toString(), userId.toString(), String.valueOf(orderId));
+    // 2. 得到lua脚本执行结构，为0有购买资格，为1没有购买资格
+    int resultValue = result.intValue();
+    if (resultValue != 0) {
+        // 没有资格
+        // 2.1.不为0 ，代表没有购买资格
+        return Result.fail(resultValue == 1 ? "库存不足" : "不能重复下单");
+    }
+    // 2.2 有资格，把下单信息保存到阻塞队列
+    // 3.创建订单信息
+    VoucherOrder voucherOrder = new VoucherOrder();
+    voucherOrder.setVoucherId(voucherId);
+    voucherOrder.setUserId(userId);
+    voucherOrder.setId(orderId);
+    // 3.1保存到阻塞队列
+    orderBlockingQueue.add(voucherOrder);
+    // 异步创建线程完成订单的创建
+    // 4.创建代理对象
+    proxy = (IVoucherOrderService) AopContext.currentProxy();
+    // 4.返回
+    return Result.ok(orderId);
+}
+
+@Transactional(rollbackFor = Exception.class)
+@Override
+public void createVoucherOrder(VoucherOrder voucherOrder) {
+    // 一人一单业务
+    Long userId = voucherOrder.getUserId();
+    int count = query().eq("user_id", userId).eq("voucher_id", voucherOrder.getVoucherId()).count();
+    if (count > 0) {
+        log.error("您已购买过该商品！请勿再次购买");
+    }
+    // 扣减库存
+    boolean success = seckillVoucherService.update()
+            .setSql("stock = stock - 1") // set stock = stock - 1
+            // 乐观锁 cas
+            .eq("voucher_id", voucherOrder.getVoucherId()).gt("stock", 0) // where id = ? and stock = ?
+            .update();
+    if (!success) {
+        log.error("库存不足!");
+    }
+    // 3.3 创建订单
+    save(voucherOrder);
+}
+```
