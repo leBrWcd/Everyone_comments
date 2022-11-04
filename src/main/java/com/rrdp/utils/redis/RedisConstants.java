@@ -38,9 +38,18 @@ public class RedisConstants {
      */
     public static final String CACHE_SHOP_KEY = "cache:shop:";
 
+    /**
+     * 锁前缀
+     */
     public static final String LOCK_SHOP_KEY = "lock:shop:";
+    /**
+     * 锁TTL
+     */
     public static final Long LOCK_SHOP_TTL = 10L;
 
+    /**
+     * 秒杀信息前缀
+     */
     public static final String SECKILL_STOCK_KEY = "seckill:stock:";
     public static final String BLOG_LIKED_KEY = "blog:liked:";
     public static final String FEED_KEY = "feed:";
