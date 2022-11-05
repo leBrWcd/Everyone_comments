@@ -30,4 +30,6 @@ end
 redis.call('incrby',stockKey, -1)
 -- 3.5 下单（将用户存入订单Set集合）
 redis.call('sadd',orderKey,userId)
+-- 3.6 向消息队列中发送消息
+redis.call('xadd','stream.orders','*','voucherId',voucherId,'userId',userId,'id',orderId)
 return 0
