@@ -7,11 +7,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.rrdp.dto.Result;
 import com.rrdp.dto.UserDTO;
 import com.rrdp.entity.Blog;
+import com.rrdp.entity.Follow;
 import com.rrdp.entity.User;
 import com.rrdp.mapper.BlogMapper;
 import com.rrdp.mapper.UserMapper;
 import com.rrdp.service.IBlogService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.rrdp.service.IFollowService;
 import com.rrdp.service.IUserService;
 import com.rrdp.utils.SystemConstants;
 import com.rrdp.utils.UserHolder;
@@ -40,6 +42,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private IFollowService followService;
 
     @Override
     public Result queryById(Long id) {
@@ -155,5 +160,27 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 .map(user -> BeanUtil.copyProperties(user, UserDTO.class)).collect(Collectors.toList());
         // 返回list
         return Result.ok(userDTOList);
+    }
+
+    @Override
+    public Result saveBlog(Blog blog) {
+        // 1.获取登录用户
+        UserDTO user = UserHolder.getUser();
+        blog.setUserId(user.getId());
+        // 2.保存探店博文
+        boolean save = save(blog);
+        if (save) {
+            // 3.查询发布该笔记作者的所有粉丝  select * from tb_follow where follow_user_id = ?
+            List<Follow> follows = followService.query().eq("follow_user_id", user.getId()).list();
+            // 4.推送笔记id给所有粉丝
+            follows.forEach( follow -> {
+                // 获取粉丝id
+                Long userId = follow.getUserId();
+                // 采用sortedSet实现排名同时实现滚动分页
+                stringRedisTemplate.opsForZSet().add("feed:box:" + userId,blog.getId().toString(),System.currentTimeMillis());
+            });
+        }
+        // 返回id
+        return Result.ok(blog.getId());
     }
 }

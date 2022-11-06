@@ -23,6 +23,12 @@ public class SystemConstants {
      * 最大页码
      */
     public static final int MAX_PAGE_SIZE = 10;
-
+    /**
+     * 笔记点赞列表 KEY
+     */
     public static final String BLOG_LIKE_KEY = "blog:like:";
+    /**
+     * 好友关注列表 KEY
+     */
+    public static final String FOLLOWS_KEY = "follows:";
 }

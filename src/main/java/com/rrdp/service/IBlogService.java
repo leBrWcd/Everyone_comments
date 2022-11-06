@@ -48,4 +48,11 @@ public interface IBlogService extends IService<Blog> {
      * @return 无
      */
     Result queryBloglikes(Long id);
+
+    /**
+     * 保存笔记
+     * @param blog 笔记
+     * @return 无
+     */
+    Result saveBlog(Blog blog);
 }
