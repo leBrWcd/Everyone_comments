@@ -1,5 +1,6 @@
 package com.rrdp.service;
 
+import com.rrdp.dto.Result;
 import com.rrdp.entity.Blog;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -8,9 +9,43 @@ import com.baomidou.mybatisplus.extension.service.IService;
  *  服务类
  * </p>
  *
- * @author 虎哥
- * @since 2021-12-22
+ * @author lebrwcd
+ * @since 2022/11/6
  */
 public interface IBlogService extends IService<Blog> {
 
+    /**
+     * 根据id查询博客信息
+     * @param id 博客id
+     * @return 无
+     */
+    Result queryById(Long id);
+
+    /**
+     * 根据当前页查询热门博客
+     * @param current 当前页码
+     * @return 无
+     */
+    Result queryHotBlog(Integer current);
+
+    /**
+     * 查询我发布的博客
+     * @param current 当前页
+     * @return 无
+     */
+    Result queryMyBlog(Integer current);
+
+    /**
+     * 点赞笔记
+     * @param id 笔记id
+     * @return 无
+     */
+    Result likeBlog(Long id);
+
+    /**
+     * 查询笔记点赞排行榜
+     * @param id 笔记id
+     * @return 无
+     */
+    Result queryBloglikes(Long id);
 }

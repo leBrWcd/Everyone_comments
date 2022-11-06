@@ -10,7 +10,7 @@ public class SystemConstants {
     /**
      * 图片上传路径
      */
-    public static final String IMAGE_UPLOAD_DIR = "D:\\redisExp\\nginx-1.18.0\\nginx-1.18.0\\html\\hmdp\\imgs\\";
+    public static final String IMAGE_UPLOAD_DIR = "D:\\redisExpStatic\\nginx-1.18.0\\nginx-1.18.0\\html\\rrdp\\imgs\\";
     /**
      * 用户随机昵称前缀
      */
@@ -23,4 +23,6 @@ public class SystemConstants {
      * 最大页码
      */
     public static final int MAX_PAGE_SIZE = 10;
+
+    public static final String BLOG_LIKE_KEY = "blog:like:";
 }
