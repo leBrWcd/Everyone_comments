@@ -31,4 +31,9 @@ public class SystemConstants {
      * 好友关注列表 KEY
      */
     public static final String FOLLOWS_KEY = "follows:";
+
+    /**
+     * 收件箱key
+     */
+    public static final String FEED_BOX_KEY = "feed:box:";
 }

@@ -55,4 +55,12 @@ public interface IBlogService extends IService<Blog> {
      * @return 无
      */
     Result saveBlog(Blog blog);
+
+    /**
+     * 实现滚动分页
+     * @param lastId 最小时间戳
+     * @param offset 偏移量
+     * @return 无
+     */
+    Result scrollPage(Long lastId, Integer offset);
 }

@@ -35,6 +35,13 @@ public class BlogController {
         return blogService.queryById(id);
     }
 
+
+    @GetMapping("/of/follow")
+    public Result scrollPage(@RequestParam("lastId") Long lastId,
+                             @RequestParam(value = "offset",defaultValue = "0") Integer offset) {
+        return blogService.scrollPage(lastId,offset);
+    }
+
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
         return blogService.saveBlog(blog);

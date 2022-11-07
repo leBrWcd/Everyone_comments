@@ -5,21 +5,22 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.rrdp.dto.Result;
 import com.rrdp.dto.UserDTO;
 import com.rrdp.entity.Follow;
-import com.rrdp.entity.User;
 import com.rrdp.mapper.FollowMapper;
 import com.rrdp.service.IFollowService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.rrdp.service.IUserService;
-import com.rrdp.utils.SystemConstants;
 import com.rrdp.utils.UserHolder;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static com.rrdp.utils.SystemConstants.FOLLOWS_KEY;

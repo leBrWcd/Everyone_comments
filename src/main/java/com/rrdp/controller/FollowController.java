@@ -2,6 +2,7 @@ package com.rrdp.controller;
 
 
 import com.rrdp.dto.Result;
+import com.rrdp.dto.ScrollResult;
 import com.rrdp.service.IFollowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,12 @@ public class FollowController {
     @Resource
     private IFollowService followService;
 
+
+    /**
+     * 共同关注
+     * @param id
+     * @return
+     */
     @GetMapping("/common/{id}")
     public Result common(@PathVariable("id") Long id) {
         return followService.common(id);
