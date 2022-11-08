@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.rrdp.dto.LoginFormDTO;
 import com.rrdp.dto.Result;
 import com.rrdp.entity.User;
+import org.springframework.http.HttpRequest;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 /**
@@ -32,4 +34,10 @@ public interface IUserService extends IService<User> {
      * @return Result
      */
     Result login(LoginFormDTO loginForm, HttpSession session);
+
+    Result logout(HttpServletRequest request);
+
+    Result sign();
+
+    Result signCount();
 }

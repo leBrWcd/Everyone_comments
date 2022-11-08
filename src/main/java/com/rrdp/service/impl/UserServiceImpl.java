@@ -13,12 +13,19 @@ import com.rrdp.mapper.UserMapper;
 import com.rrdp.service.IUserService;
 import com.rrdp.utils.RegexUtils;
 import com.rrdp.utils.SystemConstants;
+import com.rrdp.utils.UserHolder;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -32,6 +39,7 @@ import static com.rrdp.utils.redis.RedisConstants.*;
  * @author lebrwcd
  * @since 2022/10/28
  */
+@Slf4j
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 
@@ -90,6 +98,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.expire(LOGIN_TOKEN_PRE + token,LOGIN_TOKEN_TTL,TimeUnit.MINUTES);
         // 4. 返回token给客户端
         return Result.ok(token);
+    }
+
+    @Override
+    public Result logout(HttpServletRequest request) {
+
+        // 获取当前用户
+        UserDTO user = UserHolder.getUser();
+        String token = request.getHeader("authorization");
+        //ThreadLocal删除
+        if (user == null) {
+            stringRedisTemplate.delete(LOGIN_TOKEN_PRE + token);
+            return Result.ok();
+        }
+        UserHolder.removeUser();
+        // redis中token删除
+        stringRedisTemplate.delete(LOGIN_TOKEN_PRE + token);
+        return Result.ok();
+    }
+
+
+    @Override
+    public Result sign() {
+        // 1.获取当前用户
+        Long userId = UserHolder.getUser().getId();
+        // 2.获取年月
+        LocalDateTime now = LocalDateTime.now();
+        String format = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        // 3.拼接key
+        String key = USER_SIGN_KEY + userId + format;
+        // 4.当天签到是该月的第几号
+        int dayOfMonth = now.getDayOfMonth();
+        // 5.写入redis的bitMap  setbit key day 1
+        stringRedisTemplate.opsForValue().setBit(key,dayOfMonth - 1,true);
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        // 1.获得当前登录用户
+        Long userId = UserHolder.getUser().getId();
+        // 获取日期
+        LocalDateTime now = LocalDateTime.now();
+        String format = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        // 获取redis中当前用户该月截至今天的签到记录
+        String key = USER_SIGN_KEY + userId + format;
+        List<Long> bitField = stringRedisTemplate.opsForValue().bitField
+                (key, BitFieldSubCommands
+                        .create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(now.getDayOfMonth())).valueAt(0));
+        if (bitField == null || bitField.isEmpty()) {
+            // 没有任何签到结果
+            return Result.ok(0);
+        }
+        // 当月记录数bitMap的十进制数
+        Long num = bitField.get(0);
+        if (num == 0) {
+            return Result.ok(0);
+        }
+        log.debug("num == {}",num);
+        // 获得的bitMap最后一位与1做与运算，没运算完一位，bitMap右移继续
+        int count = 0;
+        while (true) {
+            if ((num & 1) == 0) {
+                break;
+            }
+            // 把数字右移一位，抛弃最后一个bit位，继续下一个bit位
+            num >>>= 1;
+            count++;
+        }
+        return Result.ok(count);
     }
 
     /**
