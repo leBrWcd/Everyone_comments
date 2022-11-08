@@ -56,7 +56,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
         UserDTO user = UserHolder.getUser();
         // 1.判断是取消关注还是关注
         if (isFollow) {
-            // 关注
+            // 关注(之前页面状态时未关注)
             Follow follow = new Follow();
             follow.setFollowUserId(followUserid);
             follow.setUserId(user.getId());
@@ -65,7 +65,7 @@ public class FollowServiceImpl extends ServiceImpl<FollowMapper, Follow> impleme
                 // 把关注用户存入redis
                 stringRedisTemplate.opsForSet().add(FOLLOWS_KEY + user.getId(),followUserid.toString());
             }
-        } else {
+        } else { //(之前页面状态时已关注)
             // 3.取关，删除 delete from tb_follow where user_id = ? and follow_user_id = ?
             boolean remove = remove(new QueryWrapper<Follow>()
                     .eq("user_id", user.getId()).eq("follow_user_id", followUserid));

@@ -130,7 +130,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         UserDTO user = UserHolder.getUser();
         // 2.判断当前用户是否点赞过
         Double score = stringRedisTemplate.opsForZSet().score(SystemConstants.BLOG_LIKE_KEY + id, user.getId().toString());
-        // 3.未点赞，可以点
+        // 3.未点赞，可以点（之前的状态时未点赞）
         if (score == null) {
             // 3.1 数据库点赞数 + 1
             boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
@@ -140,7 +140,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
                 stringRedisTemplate.opsForZSet().add(SystemConstants.BLOG_LIKE_KEY + id,user.getId().toString(),System.currentTimeMillis());
             }
         } else {
-            // 4.已点赞再点了一次（取消点赞）
+            // 4.取消点赞（之前的状态是已点赞）
             // 4.1 数据库点赞数 - 1
             boolean isSuccess = update().setSql("liked = liked - 1").eq("id", id).update();
             // 4.2 redis移除点赞用户

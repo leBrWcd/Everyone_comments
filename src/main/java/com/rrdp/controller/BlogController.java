@@ -65,21 +65,41 @@ public class BlogController {
         return Result.ok(records);
     }
 
+    /**
+     * 查询笔记点赞排行榜
+     * @param id
+     * @return
+     */
     @GetMapping("/likes/{id}")
     public Result queryBloglikes(@PathVariable("id") Long id) {
         return blogService.queryBloglikes(id);
     }
 
+    /**
+     * 点赞笔记
+     * @param id
+     * @return
+     */
     @PutMapping("/like/{id}")
     public Result likeBlog(@PathVariable("id") Long id) {
         return blogService.likeBlog(id);
     }
 
+    /**
+     * 关于我
+     * @param current
+     * @return
+     */
     @GetMapping("/of/me")
     public Result queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return blogService.queryMyBlog(current);
     }
 
+    /**
+     * 热门笔记
+     * @param current
+     * @return
+     */
     @GetMapping("/hot")
     public Result queryHotBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         return blogService.queryHotBlog(current);

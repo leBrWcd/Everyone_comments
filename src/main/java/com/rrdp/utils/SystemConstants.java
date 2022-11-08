@@ -1,5 +1,7 @@
 package com.rrdp.utils;
 
+import javax.servlet.http.PushBuilder;
+
 /**
  * @description: 系统常量工具类
  * @author : lebrwcd
@@ -31,9 +33,12 @@ public class SystemConstants {
      * 好友关注列表 KEY
      */
     public static final String FOLLOWS_KEY = "follows:";
-
     /**
      * 收件箱key
      */
     public static final String FEED_BOX_KEY = "feed:box:";
+    /**
+     * 店铺坐标
+     */
+    public static final String SHOP_GEO_KEY = "shop:geo:";
 }
